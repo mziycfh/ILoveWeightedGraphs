@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ILoveWeightedGraphs</title>
+    <script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <h2>Please Enter Nodes and Weights</h2>
+    <p>Use "Add Node" to create a new node. Once a node is created, you can use "Add Edge" next to the node to create additional edges from that node.</p>
+    <label for="orientation">Graph Orientation: </label>
+    <select id="orientation" title="Select the orientation of the graph">
+        <option value="LR">Horizontal</option>
+        <option value="TB">Vertical</option>
+    </select>
+    <table id="inputTable">
+        <tr>
+            <th>Source Node</th>
+            <th>Destination Node</th>
+            <th>Weight</th>
+        </tr>
+        <tr>
+            <td><input type="text" class="sourceNode"></td>
+            <td><input type="text" class="destinationNode"></td>
+            <td><input type="text" class="weight"></td>
+            <td><button class="addEdgeBtn" title="Click to add another edge from this source node">Add Edge</button></td>
+            <td><button class="deleteBtn" title="Click to delete this edge">Delete</button></td>
+        </tr>
+    </table>
+    <button onclick="addNode()" title="Click to add a new node with one edge">Add Node</button>
+    <button onclick="updateGraph()" title="Click to generate the graph based on your input">See the Graph</button>
+    <button onclick="downloadCSV()" title="Click to download the graph data as a CSV file">Download CSV</button>
+    <input type="file" id="csvFile" accept=".csv">
+    <button onclick="uploadCSV()" title="Click to upload a CSV file and populate the table">Upload CSV</button>
+    <div id="graphOutput">
+        <!-- The mermaid diagram will go here -->
+    </div>
+
+    <script>
+        mermaid.initialize({startOnLoad:true});
+
+        document.querySelectorAll('.deleteBtn').forEach(function (button) {
+            button.addEventListener('click', deleteRow);
+        });
+
+        document.querySelectorAll('.addEdgeBtn').forEach(function (button) {
+            button.addEventListener('click', addEdge);
+        });
+
+        function addEdge(event) {
+            var btn = event.target;
+            var row = btn.parentNode.parentNode;
+            var sourceNode = row.querySelector('.sourceNode').value;
+
+            var table = document.getElementById('inputTable');
+            var index = row.rowIndex;
+            var newRow = table.insertRow(index + 1);
+
+            var sourceCell = newRow.insertCell(0);
+            var destinationCell = newRow.insertCell(1);
+            var weightCell = newRow.insertCell(2);
+            var actionCell = newRow.insertCell(3);
+            var deleteCell = newRow.insertCell(4);
+
+            sourceCell.innerHTML = '<input type="text" class="sourceNode" value="' + sourceNode + '" readonly>';
+            destinationCell.innerHTML = '<input type="text" class="destinationNode">';
+            weightCell.innerHTML = '<input type="text" class="weight">';
+            actionCell.innerHTML = '<button class="addEdgeBtn" title="Click to add another edge from this source node">Add Edge</button>';
+            deleteCell.innerHTML = '<button class="deleteBtn" title="Click to delete this edge">Delete</button>';
+
+            actionCell.querySelector('.addEdgeBtn').addEventListener('click', addEdge);
+            deleteCell.querySelector('.deleteBtn').addEventListener('click', deleteRow);
+        }
+
+        function addNode() {
+            var table = document.getElementById('inputTable');
+            var row = table.insertRow(-1);
+
+            var sourceCell = row.insertCell(0);
+            var destinationCell = row.insertCell(1);
+            var weightCell = row.insertCell(2);
+            var actionCell = row.insertCell(3);
+            var deleteCell = row.insertCell(4);
+
+            sourceCell.innerHTML = '<input type="text" class="sourceNode">';
+            destinationCell.innerHTML = '<input type="text" class="destinationNode">';
+            weightCell.innerHTML = '<input type="text" class="weight">';
+            actionCell.innerHTML = '<button class="addEdgeBtn" title="Click to add another edge from this source node">Add Edge</button>';
+            deleteCell.innerHTML = '<button class="deleteBtn" title="Click to delete this edge">Delete</button>';
+
+            actionCell.querySelector('.addEdgeBtn').addEventListener('click', addEdge);
+            deleteCell.querySelector('.deleteBtn').addEventListener('click', deleteRow);
+        }
+
+        function deleteRow(event) {
+            var table = document.getElementById('inputTable');
+            if (table.rows.length <= 2) { // Header row + one data row
+                alert('Error: There must be at least one row.');
+                return;
+            }
+
+            var btn = event.target;
+            var row = btn.parentNode.parentNode;
+            row.parentNode.removeChild(row);
+        }
+
+        function updateGraph() {
+            var sourceNodes = document.getElementsByClassName('sourceNode');
+            var destinationNodes = document.getElementsByClassName('destinationNode');
+            var weights = document.getElementsByClassName('weight');
+            var orientation = document.getElementById('orientation').value;
+
+            var graphText = '<div class="mermaid">graph ' + orientation + '\n';
+
+            for (var i = 0; i < sourceNodes.length; i++) {
+                if (sourceNodes[i].value && destinationNodes[i].value && weights[i].value) {
+                    graphText += sourceNodes[i].value + ' -->|' + weights[i].value + '| ' + destinationNodes[i].value + '\n';
+                }
+            }
+
+            graphText += '</div>';
+
+            document.getElementById('graphOutput').innerHTML = graphText;
+            mermaid.init(undefined, document.querySelectorAll('.mermaid'));
+        }
+
+        function downloadCSV() {
+            var sourceNodes = document.getElementsByClassName('sourceNode');
+            var destinationNodes = document.getElementsByClassName('destinationNode');
+            var weights = document.getElementsByClassName('weight');
+
+            var csvContent = 'Source Node,Destination Node,Weight\n';
+
+            for (var i = 0; i < sourceNodes.length; i++) {
+                if (sourceNodes[i].value && destinationNodes[i].value && weights[i].value) {
+                    csvContent += sourceNodes[i].value + ',' + destinationNodes[i].value + ',' + weights[i].value + '\n';
+                }
+            }
+
+            var encodedUri = encodeURI('data:text/csv;charset=utf-8,' + csvContent);
+            var link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', 'graph_data.csv');
+            document.body.appendChild(link); // Required for Firefox
+
+            link.click(); // This will download the data file
+        }
+
+        window.addEventListener('beforeunload', function (e) {
+            // Most browsers.
+            e.preventDefault();
+            // Chrome requires returnValue to be set.
+            e.returnValue = '';
+        });
+
+        function uploadCSV() {
+            var fileInput = document.getElementById('csvFile');
+            var file = fileInput.files[0];
+            var reader = new FileReader();
+
+            reader.onload = function(e) {
+                var contents = e.target.result;
+                var lines = contents.split('\n');
+
+                // Clear the existing rows
+                var table = document.getElementById('inputTable');
+                var rowCount = table.rows.length;
+                for (var x=rowCount-1; x>0; x--) {
+                    table.deleteRow(x);
+                }
+
+                // Add rows from CSV
+                for (var i = 1; i < lines.length; i++) {
+                    var cells = lines[i].split(',');
+
+                    if (cells.length === 3) { // Source Node,Destination Node,Weight
+                        var row = table.insertRow(-1);
+
+                        var sourceCell = row.insertCell(0);
+                        var destinationCell = row.insertCell(1);
+                        var weightCell = row.insertCell(2);
+                        var actionCell = row.insertCell(3);
+                        var deleteCell = row.insertCell(4);
+
+                        sourceCell.innerHTML = '<input type="text" class="sourceNode" value="' + cells[0] + '" readonly>';
+                        destinationCell.innerHTML = '<input type="text" class="destinationNode" value="' + cells[1] + '">';
+                        weightCell.innerHTML = '<input type="text" class="weight" value="' + cells[2] + '">';
+                        actionCell.innerHTML = '<button class="addEdgeBtn" title="Click to add another edge from this source node">Add Edge</button>';
+                        deleteCell.innerHTML = '<button class="deleteBtn" title="Click to delete this edge">Delete</button>';
+
+                        actionCell.querySelector('.addEdgeBtn').addEventListener('click', addEdge);
+                        deleteCell.querySelector('.deleteBtn').addEventListener('click', deleteRow);
+                    }
+                }
+            };
+
+            reader.readAsText(file);
+        }
+
+    </script>
+</body>
+</html>
